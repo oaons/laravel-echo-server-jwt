@@ -50,6 +50,11 @@ export class Cli {
                 type: "string",
                 default: "laravel-echo-server.json",
                 describe: "The name of the config file to create."
+            },
+            lock: {
+                type: 'string',
+                default: 'laravel-echo-server.lock',
+                describe: 'The name of the lock.',
             }
         });
 
@@ -292,10 +297,7 @@ export class Cli {
             options.devMode =
                 `${yargs.argv.dev || options.devMode || false}` === "true";
 
-            const lockFile = path.join(
-                path.dirname(configFile),
-                path.basename(configFile, ".json") + ".lock"
-            );
+            const lockFile = this.getLockFile(yargs.argv.lock, yargs.argv.dir);
 
             if (fs.existsSync(lockFile)) {
                 let lockProcess;
@@ -389,10 +391,7 @@ export class Cli {
             yargs.argv.config,
             yargs.argv.dir
         );
-        const lockFile = path.join(
-            path.dirname(configFile),
-            path.basename(configFile, ".json") + ".lock"
-        );
+        const lockFile = this.getLockFile(yargs.argv.lock, yargs.argv.dir);
 
         if (fs.existsSync(lockFile)) {
             let lockProcess;
@@ -550,6 +549,12 @@ export class Cli {
         return path.isAbsolute(filePath)
             ? filePath
             : path.join(process.cwd(), filePath);
+    }
+
+    getLockFile(file: string = null, dir: string = null): string {
+        const filePath = path.join(dir || '', file || 'laravel-echo-server.lock');
+
+        return path.isAbsolute(filePath) ? filePath : path.join('/var/lock/', filePath);
     }
 
     /**
