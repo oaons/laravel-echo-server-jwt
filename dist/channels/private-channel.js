@@ -3,92 +3,30 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.PrivateChannel = void 0;
 var request = require('request');
 var url = require('url');
-var log_1 = require("./../log");
+var jwt = require('jsonwebtoken');
 var PrivateChannel = (function () {
     function PrivateChannel(options) {
         this.options = options;
         this.request = request;
     }
-    PrivateChannel.prototype.authenticate = function (socket, data) {
-        var options = {
-            url: this.authHost(socket) + this.options.authEndpoint,
-            form: { channel_name: data.channel },
-            headers: (data.auth && data.auth.headers) ? data.auth.headers : {},
-            rejectUnauthorized: false
-        };
-        if (this.options.devMode) {
-            log_1.Log.info("[" + new Date().toISOString() + "] - Sending auth request to: " + options.url + "\n");
-        }
-        return this.serverRequest(socket, options);
-    };
-    PrivateChannel.prototype.authHost = function (socket) {
-        var authHosts = (this.options.authHost) ?
-            this.options.authHost : this.options.host;
-        if (typeof authHosts === "string") {
-            authHosts = [authHosts];
-        }
-        var authHostSelected = authHosts[0] || 'http://localhost';
-        if (socket.request.headers.referer) {
-            var referer = url.parse(socket.request.headers.referer);
-            for (var _i = 0, authHosts_1 = authHosts; _i < authHosts_1.length; _i++) {
-                var authHost = authHosts_1[_i];
-                authHostSelected = authHost;
-                if (this.hasMatchingHost(referer, authHost)) {
-                    authHostSelected = referer.protocol + "//" + referer.host;
-                    break;
+    PrivateChannel.prototype.authenticate = function (socket, data, secret) {
+        if (data.auth && data.auth.headers && 'Authorization' in data.auth.headers) {
+            var auth = data.auth.headers['Authorization'].split(':');
+            if (2 === auth.length && 'Bearer' === auth[0].trim()) {
+                var token = auth[1].trim();
+                try {
+                    var channel_id = jwt.verify(token, secret).channel_id;
+                    if ('private-' + channel_id === data.channel) {
+                        return Promise.resolve(true);
+                    }
+                    return Promise.reject({ reason: 'Invalid channel name. Given: ' + channel_id + ', expected: ' + data.channel, status: 0 });
+                }
+                catch (err) {
+                    return Promise.reject({ reason: err.name + ': ' + err.message, status: 0 });
                 }
             }
-            ;
         }
-        if (this.options.devMode) {
-            log_1.Log.error("[" + new Date().toISOString() + "] - Preparing authentication request to: " + authHostSelected);
-        }
-        return authHostSelected;
-    };
-    PrivateChannel.prototype.hasMatchingHost = function (referer, host) {
-        return (referer.hostname && referer.hostname.substr(referer.hostname.indexOf('.')) === host) ||
-            referer.protocol + "//" + referer.host === host ||
-            referer.host === host;
-    };
-    PrivateChannel.prototype.serverRequest = function (socket, options) {
-        var _this = this;
-        return new Promise(function (resolve, reject) {
-            options.headers = _this.prepareHeaders(socket, options);
-            var body;
-            _this.request.post(options, function (error, response, body, next) {
-                if (error) {
-                    if (_this.options.devMode) {
-                        log_1.Log.error("[" + new Date().toISOString() + "] - Error authenticating " + socket.id + " for " + options.form.channel_name);
-                        log_1.Log.error(error);
-                    }
-                    reject({ reason: 'Error sending authentication request.', status: 0 });
-                }
-                else if (response.statusCode !== 200) {
-                    if (_this.options.devMode) {
-                        log_1.Log.warning("[" + new Date().toISOString() + "] - " + socket.id + " could not be authenticated to " + options.form.channel_name);
-                        log_1.Log.error(response.body);
-                    }
-                    reject({ reason: 'Client can not be authenticated, got HTTP status ' + response.statusCode, status: response.statusCode });
-                }
-                else {
-                    if (_this.options.devMode) {
-                        log_1.Log.info("[" + new Date().toISOString() + "] - " + socket.id + " authenticated for: " + options.form.channel_name);
-                    }
-                    try {
-                        body = JSON.parse(response.body);
-                    }
-                    catch (e) {
-                        body = response.body;
-                    }
-                    resolve(body);
-                }
-            });
-        });
-    };
-    PrivateChannel.prototype.prepareHeaders = function (socket, options) {
-        options.headers['Cookie'] = options.headers['Cookie'] || socket.request.headers.cookie;
-        options.headers['X-Requested-With'] = 'XMLHttpRequest';
-        return options.headers;
+        return Promise.reject({ reason: 'Invalid auth headers: ' + JSON.stringify((data.auth && data.auth.headers) ? data.auth.headers : {}), status: 0 });
     };
     return PrivateChannel;
 }());

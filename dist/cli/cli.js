@@ -21,7 +21,8 @@ var Cli = (function () {
             LARAVEL_ECHO_SERVER_SSL_CERT: "sslCertPath",
             LARAVEL_ECHO_SERVER_SSL_KEY: "sslKeyPath",
             LARAVEL_ECHO_SERVER_SSL_CHAIN: "sslCertChainPath",
-            LARAVEL_ECHO_SERVER_SSL_PASS: "sslPassphrase"
+            LARAVEL_ECHO_SERVER_SSL_PASS: "sslPassphrase",
+            APP_KEY: "secret"
         };
         this.defaultOptions = echo.defaultOptions;
     }

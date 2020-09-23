@@ -40,7 +40,8 @@ var EchoServer = (function () {
                 allowOrigin: '',
                 allowMethods: '',
                 allowHeaders: ''
-            }
+            },
+            secret: ''
         };
     }
     EchoServer.prototype.run = function (options) {

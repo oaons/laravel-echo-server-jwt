@@ -105,7 +105,7 @@ export class Channel {
      * Join private channel, emit data to presence channels.
      */
     joinPrivate(socket: any, data: any): void {
-        this.private.authenticate(socket, data).then(res => {
+        this.private.authenticate(socket, data, this.options.secret).then(res => {
             socket.join(data.channel);
 
             if (this.isPresence(data.channel)) {
@@ -120,7 +120,7 @@ export class Channel {
             this.onJoin(socket, data.channel);
         }, error => {
             if (this.options.devMode) {
-                Log.error(error.reason);
+                Log.error(`[${new Date().toISOString()}]: ${error.reason}`);
             }
 
             this.io.sockets.to(socket.id)
